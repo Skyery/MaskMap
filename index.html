@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+   integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+   crossorigin=""/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css"></link> 
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css"></link>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        *{
+    margin: 0;
+    padding: 0;
+}
+
+#mymap{
+    height: 100vh;
+    width: 100vw;
+}
+
+#jsGeoBtn{
+    position: fixed;
+    top: 80px;
+    left: 11px;
+    z-index: 999;
+}
+
+.marker-cluster-small {
+    background-color: rgba(181, 226, 140, 0.6);
+}
+.marker-cluster-small div {
+    background-color: rgba(110, 204, 57, 0.6);
+}
+    
+.marker-cluster-medium {
+    background-color: rgba(241, 211, 87, 0.6);
+}
+.marker-cluster-medium div {
+    background-color: rgba(240, 194, 12, 0.6);
+}
+    
+.marker-cluster-large {
+    background-color: rgba(253, 156, 115, 0.6);
+}
+.marker-cluster-large div {
+    background-color: rgba(241, 128, 23, 0.6);
+}
+    
+.marker-cluster {
+    background-clip: padding-box;
+    border-radius: 20px;
+}
+.marker-cluster div {
+    width: 30px;
+    height: 30px;
+    margin-left: 5px;
+    margin-top: 5px;
+    
+    text-align: center;
+    border-radius: 15px;
+    font: 12px "Helvetica Neue", Arial, Helvetica, sans-serif;
+}
+.marker-cluster span {
+    line-height: 30px;
+}
+    
+.container.leaflet-right {
+    right:0px;
+}
+    </style>
+    <title>Leaflet</title>
+</head>
+<body>
+    <div id="mymap"></div>
+    <input type="button" id="jsGeoBtn" value="定位">
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+   crossorigin=""></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
+   <script>
+       const mymap = L.map('mymap', {
+    center: [0, 0],
+    zoom: 16
+});
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>         contributors'
+}).addTo(mymap);
+
+function init(){
+    getData();
+}
+
+let data;
+
+function getData(){
+    const xhr = new XMLHttpRequest;
+    xhr.open('get', 'https://raw.githubusercontent.com/kiang/pharmacies/master/json/points.json', true);
+    xhr.send(null);
+    xhr.onload = function(){
+        data = JSON.parse(xhr.responseText).features;
+        addMarker();
+    }
+}
+
+init();
+const markers = new L.MarkerClusterGroup({ disableClusteringAtZoom: 18 }).addTo(mymap);
+
+function addMarker(){
+    for(let i = 0; i < data.length; i++){
+        const pharmacyName = data[i].properties.name;
+        const maskAdult = data[i].properties.mask_adult;
+        const maskChild = data[i].properties.mask_child;
+        const lat = data[i].geometry.coordinates[1];
+        const lng = data[i].geometry.coordinates[0];
+        if(maskAdult == 0 || maskChild == 0){
+            mask = redIcon;
+        }else if(maskAdult < 100 && maskAdult !== 0 || maskChild < 100 && maskChild !== 0){
+            mask = orangeIcon;
+        }else{
+            mask = greenIcon;
+        }
+        markers.addLayer(L.marker([lat, lng], {icon: mask}).bindPopup(`
+        <h3>${pharmacyName}</h3><br>
+        <h4>成人: ${maskAdult}</h4>
+        <h4>兒童: ${maskChild}</h4>
+        `));
+    }
+    mymap.addLayer(markers);
+}
+
+let mask;
+
+const violetIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+const marker = L.marker([0, 0] , {icon:violetIcon}).addTo(mymap);
+
+if('geolocation' in navigator){
+    navigator.geolocation.getCurrentPosition(position =>{
+        userLat = position.coords.latitude;
+        userLng = position.coords.longitude;
+        setLocation();
+    })
+}else{
+    console.log('定位失敗');
+}
+
+function setLocation(){
+    mymap.setView([userLat, userLng], 13);
+    marker.setLatLng([userLat, userLng]).bindPopup(`<h3>我的位置</h3>`).openPopup();
+}
+
+
+const greenIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+const orangeIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+const redIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+let geoBtn = document.getElementById('jsGeoBtn');
+
+geoBtn.addEventListener('click', () =>{
+    setLocation();
+})
+   </script>
+</body>
+</html>
